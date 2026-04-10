@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  name          String
+  email         String   @unique
+  password_hash String
+  role          String   @default("patient")
+  created_at    DateTime @default(now())
+
+  encounters Encounter[]
+}
+
+model Region {
+  id         String   @id @default(uuid())
+  name       String
+  code       String   @unique
+  created_at DateTime @default(now())
+
+  doctors    Doctor[]
+  slots      AppointmentSlot[]
+  encounters Encounter[]
+}
+
+model Doctor {
+  id             String @id @default(uuid())
+  name           String
+  specialization String
+  region_id      String
+
+  region     Region            @relation(fields: [region_id], references: [id])
+  slots      AppointmentSlot[]
+  encounters Encounter[]
+
+  @@index([region_id])
+}
+
+model AppointmentSlot {
+  id           String   @id @default(uuid())
+  doctor_id    String
+  region_id    String
+  slot_date    DateTime
+  start_time   String
+  end_time     String
+  is_available Boolean  @default(true)
+
+  doctor     Doctor      @relation(fields: [doctor_id], references: [id])
+  region     Region      @relation(fields: [region_id], references: [id])
+  encounters Encounter[]
+
+  @@index([doctor_id, region_id, slot_date])
+}
+
+model Encounter {
+  id                  String          @id @default(uuid())
+  booking_code        String
+  user_id             String
+  doctor_id           String
+  region_id           String
+  appointment_slot_id String
+  status              EncounterStatus @default(BOOKED)
+  created_at          DateTime        @default(now())
+
+  user   User            @relation(fields: [user_id], references: [id])
+  doctor Doctor          @relation(fields: [doctor_id], references: [id])
+  region Region          @relation(fields: [region_id], references: [id])
+  slot   AppointmentSlot @relation(fields: [appointment_slot_id], references: [id])
+
+  @@index([user_id])
+}
+
+enum EncounterStatus {
+  BOOKED
+  CANCELLED
+}
